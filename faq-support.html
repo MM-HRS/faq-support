@@ -172,6 +172,7 @@
   <div class="sidebar-tabs">
     <button class="sidebar-tab active" id="tab-btn-faq">FAQ管理</button>
     <button class="sidebar-tab" id="tab-btn-history">履歴</button>
+    <button class="sidebar-tab" id="tab-btn-settings">設定</button>
   </div>
 
   <div class="sidebar-content">
@@ -204,6 +205,24 @@
       </div>
       <div id="historyList">
         <p style="font-size:12px;color:var(--text-muted);text-align:center;padding:24px 0">まだ履歴がありません</p>
+      </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div class="tab-panel" id="tab-settings">
+      <div class="faq-form">
+        <div class="section-label">Claude APIキー</div>
+        <label>APIキー（sk-ant-...）</label>
+        <input type="password" id="inputApiKey" placeholder="sk-ant-api03-...">
+        <p style="font-size:10px;color:var(--text-muted);margin-top:6px;line-height:1.6">
+          キーは入力後すぐに有効になります。<br>
+          ページを閉じると消えます（セキュリティのため保存しません）。<br>
+          取得先：console.anthropic.com
+        </p>
+        <div class="btn-row">
+          <button class="btn primary" id="btnSaveApiKey">設定する</button>
+        </div>
+        <div id="apiKeyStatus" style="font-size:11px;margin-top:8px;color:var(--text-muted);text-align:center"></div>
       </div>
     </div>
 
@@ -242,6 +261,33 @@
 </div>
 
 <script>
+// ══════════════════════════════════════════════════
+// ★ Supabase設定
+// ══════════════════════════════════════════════════
+var SUPABASE_URL = "https://qdmdorfyaozszjwtfber.supabase.co";
+var SUPABASE_KEY = "sb_publishable_au1CJ3ghUvMxwyK8VitGsw_Zak831-Q";
+
+async function saveHistoryToSupabase(question, answer, confidence, escalated) {
+  try {
+    await fetch(SUPABASE_URL + '/rest/v1/history', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        question: question,
+        answer: answer,
+        confidence: confidence,
+        escalated: escalated
+      })
+    });
+  } catch(e) {
+    console.error('Supabase保存エラー:', e);
+  }
+}
 // ══════════════════════════════════════════════════
 // ★ FAQデータ（このHTMLを保存するとここも更新されます）
 // ══════════════════════════════════════════════════
@@ -437,10 +483,31 @@ function renderQuickQuestions() {
   });
 }
 
+// ── APIキー管理 ───────────────────────────────────
+
+var _apiKey = '';
+
+function getApiKey() { return _apiKey; }
+
+function saveApiKey() {
+  var key = document.getElementById('inputApiKey').value.trim();
+  if (!key || !key.startsWith('sk-')) {
+    document.getElementById('apiKeyStatus').textContent = '⚠️ 正しいAPIキーを入力してください（sk- で始まる文字列）';
+    document.getElementById('apiKeyStatus').style.color = 'var(--accent2)';
+    return;
+  }
+  _apiKey = key;
+  document.getElementById('apiKeyStatus').textContent = '✅ APIキーを設定しました';
+  document.getElementById('apiKeyStatus').style.color = 'var(--accent)';
+  document.getElementById('inputApiKey').value = '';
+  // チャット画面に戻る
+  setTimeout(function() { switchTab('faq'); }, 800);
+}
+
 // ── タブ ─────────────────────────────────────────
 
 function switchTab(tab) {
-  ['faq', 'history'].forEach(function(t) {
+  ['faq', 'history', 'settings'].forEach(function(t) {
     var btn = document.getElementById('tab-btn-' + t);
     var panel = document.getElementById('tab-' + t);
     if (btn) btn.classList.toggle('active', t === tab);
@@ -529,6 +596,11 @@ async function sendMessage() {
   var input = document.getElementById('userInput');
   var text = input.value.trim();
   if (!text || isLoading) return;
+  if (!getApiKey()) {
+    alert('APIキーが設定されていません。\n左サイドバーの「設定」タブからAPIキーを入力してください。');
+    switchTab('settings');
+    return;
+  }
   hideWelcome();
   input.value = '';
   input.style.height = 'auto';
@@ -544,7 +616,12 @@ async function sendMessage() {
 
     var res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': getApiKey(),
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
@@ -567,6 +644,7 @@ async function sendMessage() {
       : answer;
     appendMessage('ai', display, confidence, shouldEscalate);
     addHistory(text, answer, confidence, shouldEscalate);
+    saveHistoryToSupabase(text, answer, confidence, shouldEscalate);
 
   } catch(e) {
     removeTyping();
@@ -618,13 +696,17 @@ function escHtml(s) {
 document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('tab-btn-faq').addEventListener('click', function() { switchTab('faq'); });
   document.getElementById('tab-btn-history').addEventListener('click', function() { switchTab('history'); });
+  document.getElementById('tab-btn-settings').addEventListener('click', function() { switchTab('settings'); });
   document.getElementById('btnAddFaq').addEventListener('click', addFaq);
   document.getElementById('btnSaveHtml').addEventListener('click', saveAsHtml);
   document.getElementById('btnExportCsv').addEventListener('click', exportCsv);
+  document.getElementById('btnSaveApiKey').addEventListener('click', saveApiKey);
   document.getElementById('sendBtn').addEventListener('click', sendMessage);
   document.getElementById('userInput').addEventListener('keydown', handleKey);
   document.getElementById('userInput').addEventListener('input', function() { autoResize(this); });
   renderFaqList();
+  // APIキー未設定時は設定タブを最初に表示
+  switchTab('settings');
 });
 </script>
 </body>
