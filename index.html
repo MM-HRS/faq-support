@@ -301,7 +301,7 @@ var FAQ_DATA = [
 // ══════════════════════════════════════════════════
 
 var faqs = JSON.parse(JSON.stringify(FAQ_DATA));
-var history = [];
+var chatHistory = [];
 var isLoading = false;
 var idCounter = faqs.length + 1;
 var editingId = null;
@@ -425,17 +425,17 @@ function saveAsHtml() {
 function addHistory(q, a, confidence, escalated) {
   var now = new Date();
   var time = now.toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-  history.unshift({ q: q, a: a, confidence: confidence, escalated: escalated, time: time });
+  chatHistory.unshift({ q: q, a: a, confidence: confidence, escalated: escalated, time: time });
   renderHistory();
 }
 
 function renderHistory() {
   var list = document.getElementById('historyList');
-  if (!history.length) {
+  if (!chatHistory.length) {
     list.innerHTML = '<p style="font-size:12px;color:var(--text-muted);text-align:center;padding:24px 0">まだ履歴がありません</p>';
     return;
   }
-  list.innerHTML = history.slice(0, 50).map(function(h) {
+  list.innerHTML = chatHistory.slice(0, 50).map(function(h) {
     var cls, lbl;
     if (h.escalated)         { cls = 'badge-escalated'; lbl = 'エスカレ'; }
     else if (h.confidence >= 70) { cls = 'badge-high'; lbl = h.confidence + '%'; }
@@ -453,9 +453,9 @@ function renderHistory() {
 }
 
 function exportCsv() {
-  if (!history.length) { alert('履歴がありません'); return; }
+  if (!chatHistory.length) { alert('履歴がありません'); return; }
   var rows = [['日時', '質問', '回答', '信頼度', 'エスカレーション']];
-  history.forEach(function(h) {
+  chatHistory.forEach(function(h) {
     rows.push([h.time, h.q, h.a, h.confidence, h.escalated ? 'はい' : 'いいえ']);
   });
   var csv = rows.map(function(r) {
@@ -491,8 +491,8 @@ function getApiKey() { return _apiKey; }
 
 function saveApiKey() {
   var key = document.getElementById('inputApiKey').value.trim();
-  if (!key || !key.startsWith('sk-')) {
-    document.getElementById('apiKeyStatus').textContent = '⚠️ 正しいAPIキーを入力してください（sk- で始まる文字列）';
+  if (!key) {
+    document.getElementById('apiKeyStatus').textContent = '⚠️ APIキーを入力してください';
     document.getElementById('apiKeyStatus').style.color = 'var(--accent2)';
     return;
   }
