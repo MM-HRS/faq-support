@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI FAQ Support (Gemini 1.5 Flash)</title>
+<title>AI FAQ Support (Optimized)</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -15,71 +15,69 @@
   body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; overflow: hidden; }
 
   /* Layout */
-  .sidebar { width: 300px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+  .sidebar { width: 320px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
   .sidebar-header { padding: 16px 20px; border-bottom: 1px solid var(--border); }
   .logo { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--accent); letter-spacing: 2px; }
   .sidebar-tabs { display: flex; border-bottom: 1px solid var(--border); }
-  .sidebar-tab { flex: 1; padding: 10px; text-align: center; font-size: 11px; cursor: pointer; color: var(--text-muted); border: none; background: none; border-bottom: 2px solid transparent; transition: 0.2s; }
+  .sidebar-tab { flex: 1; padding: 12px; text-align: center; font-size: 11px; cursor: pointer; color: var(--text-muted); border: none; background: none; border-bottom: 2px solid transparent; transition: 0.2s; }
   .sidebar-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .sidebar-content { flex: 1; overflow-y: auto; padding: 12px; }
+  .sidebar-content { flex: 1; overflow-y: auto; padding: 16px; }
   
-  .section-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
+  .section-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; letter-spacing: 1px; }
   .faq-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; position: relative; }
   .faq-q { font-size: 12px; color: var(--accent); font-weight: 500; margin-bottom: 4px; padding-right: 40px; }
-  .faq-a { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .faq-a { font-size: 11px; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .faq-actions { position: absolute; top: 8px; right: 8px; }
   .faq-btn { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); cursor: pointer; font-size: 10px; padding: 2px 4px; }
 
   .faq-form { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
   .faq-form label { font-size: 11px; color: var(--text-muted); display: block; margin-top: 8px; }
   .faq-form input, .faq-form textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; color: var(--text); font-size: 12px; margin-top: 4px; outline: none; resize: none; }
-  .btn { width: 100%; padding: 8px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; margin-top: 8px; border: none; transition: 0.2s; }
+  .btn { width: 100%; padding: 10px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; margin-top: 10px; border: none; transition: 0.2s; }
   .btn.primary { background: var(--accent); color: #000; }
-  .btn.primary:hover { opacity: 0.8; }
   .save-html-btn { width: 100%; padding: 8px; background: none; border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); font-size: 11px; cursor: pointer; margin-top: 8px; }
 
-  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-  .chat-header { padding: 14px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; background: var(--surface); }
-  .chat-messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative;}
+  .chat-header { padding: 14px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; background: var(--surface); z-index: 10; }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth; }
   
   .message-wrap { display: flex; gap: 12px; animation: fadeIn 0.3s ease; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   .message-wrap.user { flex-direction: row-reverse; }
-  .avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+  .avatar { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
   .avatar.ai { background: rgba(0,212,170,0.1); color: var(--accent); border: 1px solid var(--accent); }
   .avatar.user { background: rgba(255,107,107,0.1); color: var(--accent2); border: 1px solid var(--accent2); }
   
-  .bubble { padding: 12px 16px; border-radius: 12px; font-size: 13px; line-height: 1.6; max-width: 80%; word-break: break-word; }
-  .bubble.ai { background: var(--ai-bubble); border: 1px solid rgba(0,212,170,0.2); border-top-left-radius: 2px; }
+  .bubble { padding: 12px 16px; border-radius: 14px; font-size: 14px; line-height: 1.6; max-width: 75%; word-break: break-word; position: relative; }
+  .bubble.ai { background: var(--ai-bubble); border: 1px solid rgba(0,212,170,0.1); border-top-left-radius: 2px; }
   .bubble.user { background: var(--user-bubble); border-top-right-radius: 2px; }
   .bubble.escalate { background: var(--escalate); border: 1px solid var(--accent2); }
   
-  .confidence-bar { height: 3px; background: #333; margin-top: 8px; border-radius: 2px; overflow: hidden; }
-  .confidence-fill { height: 100%; transition: width 0.5s; }
+  .confidence-bar { height: 3px; background: rgba(255,255,255,0.1); margin-top: 10px; border-radius: 2px; overflow: hidden; }
+  .confidence-fill { height: 100%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
 
-  .chat-input-area { padding: 14px 24px; border-top: 1px solid var(--border); background: var(--surface); }
-  .input-wrap { display: flex; gap: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
-  #userInput { flex: 1; background: none; border: none; color: var(--text); outline: none; resize: none; font-size: 13px; max-height: 150px; }
-  .send-btn { background: var(--accent); border: none; border-radius: 8px; width: 36px; height: 36px; cursor: pointer; font-weight: 700; transition: 0.2s; }
-  .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .chat-input-area { padding: 16px 24px; border-top: 1px solid var(--border); background: var(--surface); }
+  .input-wrap { display: flex; align-items: flex-end; gap: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 16px; padding: 10px 14px; }
+  #userInput { flex: 1; background: none; border: none; color: var(--text); outline: none; resize: none; font-size: 14px; max-height: 200px; padding: 4px 0; line-height: 1.5; }
+  .send-btn { background: var(--accent); border: none; border-radius: 10px; width: 36px; height: 36px; cursor: pointer; font-weight: 700; transition: 0.2s; flex-shrink: 0; }
+  .send-btn:disabled { opacity: 0.3; filter: grayscale(1); }
 
   .history-item { background: var(--surface2); padding: 10px; border-radius: 8px; margin-bottom: 8px; font-size: 11px; }
-  .history-time { color: var(--text-muted); font-size: 9px; margin-bottom: 4px; }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
-
-  .typing-indicator { display: flex; gap: 4px; padding: 12px; }
-  .dot { width: 5px; height: 5px; background: var(--accent); border-radius: 50%; animation: bounce 1.4s infinite; }
+  
+  .typing-indicator { display: flex; gap: 4px; padding: 4px 0; }
+  .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: bounce 1.4s infinite; }
   .dot:nth-child(2) { animation-delay: 0.2s; }
   .dot:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
+  @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-8px); } }
 </style>
 </head>
 <body>
 
 <div class="sidebar">
   <div class="sidebar-header">
-    <div class="logo">FAQ AI SUPPORT (GEMINI)</div>
+    <div class="logo">FAQ AI AGENT</div>
   </div>
   <div class="sidebar-tabs">
     <button class="sidebar-tab active" id="btn-faq" onclick="switchTab('faq')">FAQ管理</button>
@@ -89,12 +87,12 @@
   <div class="sidebar-content">
     <div id="tab-faq" class="tab-panel active">
       <div class="faq-form">
-        <label>質問</label><input type="text" id="newQ" placeholder="例：納期は？">
-        <label>回答</label><textarea id="newA" placeholder="例：3営業日以内です。"></textarea>
+        <label>質問キーワード</label><input type="text" id="newQ" placeholder="例：送料について">
+        <label>正確な回答内容</label><textarea id="newA" placeholder="例：全国一律500円です。1万円以上で無料。" rows="3"></textarea>
         <button class="btn primary" onclick="addFaq()">+ FAQを追加</button>
       </div>
-      <button class="save-html-btn" onclick="saveAsHtml()">💾 現在の状態を保存(HTML)</button>
-      <div class="section-label" style="margin-top:20px">登録済みFAQ</div>
+      <button class="save-html-btn" onclick="saveAsHtml()">💾 ファイルとして保存(永続化)</button>
+      <div class="section-label" style="margin-top:24px">ナレッジベース</div>
       <div id="faqList"></div>
     </div>
     <div id="tab-history" class="tab-panel">
@@ -102,13 +100,12 @@
     </div>
     <div id="tab-settings" class="tab-panel">
       <div class="faq-form">
-        <label>Gemini APIキー</label>
+        <label>Gemini API Key</label>
         <input type="password" id="inputApiKey" placeholder="AIzaSy...">
-        <button class="btn primary" onclick="saveApiKey()">キーを保存</button>
-        <p style="font-size:10px; color:var(--text-muted); margin-top:12px; line-height:1.5;">
-          1. <a href="https://aistudio.google.com/" target="_blank" style="color:var(--accent)">Google AI Studio</a>にアクセス<br>
-          2. APIキーを作成し、ここに貼り付けてください。<br>
-          ※キーはブラウザを閉じるとリセットされます。
+        <button class="btn primary" onclick="saveApiKey()">適用</button>
+        <p style="font-size:10px; color:var(--text-muted); margin-top:16px; line-height:1.6;">
+          ※ APIキーはブラウザのメモリ内に一時保存されます。<br>
+          ※ Supabase連携を使用する場合、RLS設定を確認してください。
         </p>
       </div>
     </div>
@@ -118,138 +115,128 @@
 <div class="main">
   <div class="chat-header">
     <div class="chat-title">AI Support Agent</div>
-    <div style="margin-left:auto; font-size:10px; color:var(--accent);" id="statusLabel">Gemini 1.5 Flash</div>
+    <div style="margin-left:auto; font-size:10px; display:flex; align-items:center; gap:8px;">
+        <span id="tokenBadge" style="background:var(--surface2); padding:2px 6px; border-radius:4px; color:var(--text-muted)">Flash 1.5</span>
+        <span style="color:var(--accent); font-weight:700;">ONLINE</span>
+    </div>
   </div>
   <div class="chat-messages" id="chatMessages">
-    <div class="welcome" id="welcomeMsg" style="text-align:center; padding:40px 20px; color:var(--text-muted);">
-      <h2 style="color:var(--text); margin-bottom:10px;">サポートへようこそ</h2>
-      <p>ご質問を入力してください。AIがFAQをもとに回答します。</p>
+    <div class="welcome" id="welcomeMsg" style="text-align:center; padding:60px 20px; color:var(--text-muted);">
+      <h2 style="color:var(--text); margin-bottom:12px;">CS Support AI</h2>
+      <p style="font-size:14px;">FAQを学習したAIが24時間対応します。<br>キーを設定して質問を開始してください。</p>
     </div>
   </div>
   <div class="chat-input-area">
     <div class="input-wrap">
-      <textarea id="userInput" placeholder="質問を入力... (Shift+Enterで改行)" rows="1" onkeydown="handleKeyDown(event)"></textarea>
+      <textarea id="userInput" placeholder="メッセージを入力..." rows="1" oninput="autoResize(this)" onkeydown="handleKeyDown(event)"></textarea>
       <button class="send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
     </div>
   </div>
 </div>
 
 <script>
-// ═══ CONFIGURATION ═══
+// --- CONFIGURATION ---
 const SUPABASE_URL = "https://qdmdorfyaozszjwtfber.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkbWRvcmZ5YW96c3pqd3RmYmVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3ODE4NzgsImV4cCI6MjA4ODM1Nzg3OH0.-dSoLgoLb3RSq4bAh-1gb32Sj-wA6O4RjDW7njuUFJQ";
 let _apiKey = "";
 
-// ── FAQ DATA ──
+// Initial Data
 var FAQ_DATA = [
-  { id: 1, q: "営業時間は何時までですか？", a: "平日の9:00から18:00まで営業しております。" },
-  { id: 2, q: "支払い方法を教えてください。", a: "クレジットカード決済、銀行振込、コンビニ払いに対応しています。" }
+  { id: 1, q: "営業時間は？", a: "平日の9:00〜18:00（土日祝休み）です。" },
+  { id: 2, q: "返品は可能ですか？", a: "未使用品に限り、到着後7日以内なら可能です。" }
 ];
 let faqs = [...FAQ_DATA];
 
-// ── SUPABASE SAVE ──
-async function saveHistoryToSupabase(q, a, conf, esc) {
-  try {
-    await fetch(`${SUPABASE_URL}/rest/v1/history`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`
-      },
-      body: JSON.stringify({ 
-        question: q, 
-        answer: a, 
-        confidence: Number(conf) || 0, 
-        escalated: Boolean(esc) 
-      })
-    });
-  } catch (e) { console.error("Supabase Save Error:", e); }
-}
+// --- CORE FUNCTIONS ---
 
-// ── SEND MESSAGE (GEMINI) ──
 async function sendMessage() {
   const input = document.getElementById('userInput');
   const text = input.value.trim();
   const sendBtn = document.getElementById('sendBtn');
 
-  if (!text) return;
+  if (!text || sendBtn.disabled) return;
   if (!_apiKey) { 
-    alert("「設定」タブでGemini APIキーを入力してください。"); 
+    alert("APIキーを設定してください。"); 
     switchTab('settings'); 
     return; 
   }
 
-  // UI初期化
+  // UI Reset
   if(document.getElementById('welcomeMsg')) document.getElementById('welcomeMsg').remove();
   input.value = '';
   input.style.height = 'auto';
   sendBtn.disabled = true;
   
   appendMessage('user', text);
-  showTyping();
+  const typingId = showTyping();
+  scrollToBottom();
 
   try {
-    const faqCtx = faqs.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n');
+    const faqContext = faqs.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n');
     
-    // 最新の v1 エンドポイントを使用
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${_apiKey}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${_apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: `あなたは優秀な製品カスタマーサポートです。以下の【FAQ】に基づいて回答してください。
-            
-【FAQ】
-${faqCtx}
+            text: `あなたは企業のカスタマーサポートAIです。
+以下の【FAQリスト】の内容を「唯一の正解」として回答してください。
 
-【ルール】
-1. FAQにある情報は正確に。ない場合は一般的な知識で答えつつ、詳細は担当者へ繋ぐと提案してください。
-2. 回答の最後に必ず、以下のJSON形式を1行だけ含めてください。
-{"confidence": 0-100の数値, "escalate": trueまたはfalse}
+【FAQリスト】
+${faqContext}
 
-【質問】
-${text}`
+【回答ルール】
+1. FAQにある内容は、親切かつ簡潔に答えてください。
+2. FAQに全く記載がない質問には「申し訳ございませんが、その点については詳細を確認し担当者より回答させていただきます」と答え、escalateをtrueにしてください。
+3. 回答の末尾に、必ず以下のJSONフォーマットを付与してください（このJSON自体は回答文には含めないでください）。
+[META]{"confidence": 0-100, "escalate": true/false}[/META]
+
+質問: ${text}`
           }]
         }]
       })
     });
 
-    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+    if (!response.ok) throw new Error("API請求に失敗しました。");
 
     const data = await response.json();
-    const fullText = data.candidates[0].content.parts[0].text;
+    const rawText = data.candidates[0].content.parts[0].text;
     
-    // JSONのパース
-    const jsonMatch = fullText.match(/\{.*?\}/);
-    let conf = 70, esc = false;
-    if (jsonMatch) {
-      try {
-        const meta = JSON.parse(jsonMatch[0]);
-        conf = meta.confidence; 
-        esc = meta.escalate;
-      } catch(e) { console.error("JSON Parse Error"); }
-    }
-    const cleanAnswer = fullText.replace(/\{.*?\}/, '').trim();
+    // --- ROBUST PARSING ---
+    const metaRegex = /\[META\]\s*(\{.*?\})\s*\[\/META\]/s;
+    const match = rawText.match(metaRegex);
+    let conf = 70, esc = false, cleanAnswer = rawText;
 
-    removeTyping();
+    if (match) {
+        try {
+            const meta = JSON.parse(match[1]);
+            conf = meta.confidence ?? 70;
+            esc = !!meta.escalate;
+            cleanAnswer = rawText.replace(match[0], '').trim();
+        } catch(e) { console.warn("Meta parse error"); }
+    }
+    // Fallback: strip any remaining markdown JSON blocks if AI ignored instructions
+    cleanAnswer = cleanAnswer.replace(/```json[\s\S]*?```/g, '').trim();
+
+    removeTyping(typingId);
     appendMessage('ai', cleanAnswer, conf, esc);
     
-    // 外部保存
     saveHistoryToSupabase(text, cleanAnswer, conf, esc);
     addToHistoryUI(text, cleanAnswer, conf, esc);
 
   } catch (e) {
+    removeTyping(typingId);
+    appendMessage('ai', "通信エラーが発生しました。設定メニューからAPIキーが有効か確認してください。");
     console.error(e);
-    removeTyping();
-    appendMessage('ai', "申し訳ありません。APIエラーが発生しました。キーが正しいか、または通信状況を確認してください。");
   } finally {
     sendBtn.disabled = false;
+    scrollToBottom();
   }
 }
 
-// ── UI UTILS ──
+// --- UTILS ---
+
 function appendMessage(role, content, conf = null, esc = false) {
   const chat = document.getElementById('chatMessages');
   const wrap = document.createElement('div');
@@ -257,7 +244,7 @@ function appendMessage(role, content, conf = null, esc = false) {
   
   let confHtml = '';
   if (conf !== null) {
-    const color = conf > 75 ? 'var(--accent)' : conf > 40 ? 'var(--accent3)' : 'var(--accent2)';
+    const color = conf > 80 ? 'var(--accent)' : conf > 50 ? 'var(--accent3)' : 'var(--accent2)';
     confHtml = `<div class="confidence-bar"><div class="confidence-fill" style="width:${conf}%; background:${color}"></div></div>`;
   }
 
@@ -266,21 +253,38 @@ function appendMessage(role, content, conf = null, esc = false) {
     <div class="bubble ${role} ${esc?'escalate':''}">${content}${confHtml}</div>
   `;
   chat.appendChild(wrap);
-  chat.scrollTop = chat.scrollHeight;
 }
 
 function showTyping() {
+  const id = "typing-" + Date.now();
   const t = document.createElement('div');
-  t.id = "typing-indicator";
+  t.id = id;
   t.className = "message-wrap ai";
-  t.innerHTML = `<div class="avatar ai">AI</div><div class="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  t.innerHTML = `<div class="avatar ai">AI</div><div class="bubble ai"><div class="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
   document.getElementById('chatMessages').appendChild(t);
-  document.getElementById('chatMessages').scrollTop = 99999;
+  return id;
 }
 
-function removeTyping() {
-  const t = document.getElementById('typing-indicator');
+function removeTyping(id) {
+  const t = document.getElementById(id);
   if(t) t.remove();
+}
+
+function scrollToBottom() {
+  const chat = document.getElementById('chatMessages');
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = (el.scrollHeight) + 'px';
+}
+
+function handleKeyDown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
 }
 
 function switchTab(tabId) {
@@ -294,7 +298,7 @@ function saveApiKey() {
   const val = document.getElementById('inputApiKey').value.trim();
   if (val) {
     _apiKey = val;
-    alert("APIキーを設定しました。チャットを開始できます。");
+    alert("APIキーを適用しました。");
     document.getElementById('inputApiKey').value = "";
     switchTab('faq');
   }
@@ -325,26 +329,30 @@ function deleteFaq(id) {
   renderFaqList();
 }
 
+async function saveHistoryToSupabase(q, a, conf, esc) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/history`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      },
+      body: JSON.stringify({ question: q, answer: a, confidence: conf, escalated: esc })
+    });
+  } catch (e) { console.error("History Sync Fail"); }
+}
+
 function addToHistoryUI(q, a, conf, esc) {
   const h = document.getElementById('historyList');
   const item = document.createElement('div');
   item.className = "history-item";
   item.innerHTML = `
-    <div class="history-time">${new Date().toLocaleTimeString()}</div>
-    <strong>Q: ${q}</strong><br>
-    <div style="color:var(--text-muted); margin-top:4px;">A: ${a.substring(0,40)}...</div>
-    <div style="font-size:9px; margin-top:4px; color:${esc?'var(--accent2)':'var(--accent)'}">
-      ${esc ? '要エスカレーション' : '信頼度: '+conf+'%'}
-    </div>
+    <div style="color:var(--text-muted); font-size:9px; margin-bottom:4px;">${new Date().toLocaleTimeString()}</div>
+    <strong>Q: ${q}</strong>
+    <div style="color:${esc?'var(--accent2)':'var(--accent)'}; margin-top:4px;">${esc?'要対応':'信頼度: '+conf+'%'}</div>
   `;
   h.prepend(item);
-}
-
-function handleKeyDown(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
 }
 
 function saveAsHtml() {
@@ -354,7 +362,7 @@ function saveAsHtml() {
   const blob = new Blob([html], {type: 'text/html'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); 
-  a.download = "faq-ai-agent.html"; 
+  a.download = "faq-ai-agent-v2.html"; 
   a.click();
 }
 
