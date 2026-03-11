@@ -3,8 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FAQ AI Agent - Final Stable</title>
+<title>FAQ AI Agent - Secure</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<!-- Supabase JS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
   :root {
     --bg: #0d1117; --surface: #161b22; --surface2: #21262d; --border: #30363d;
@@ -14,7 +18,6 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; overflow: hidden; }
 
-  /* Sidebar Layout */
   .sidebar { width: 320px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
   .sidebar-header { padding: 16px 20px; border-bottom: 1px solid var(--border); }
   .logo { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--accent); letter-spacing: 2px; }
@@ -22,22 +25,25 @@
   .sidebar-tab { flex: 1; padding: 12px; text-align: center; font-size: 11px; cursor: pointer; color: var(--text-muted); border: none; background: none; border-bottom: 2px solid transparent; transition: 0.2s; }
   .sidebar-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
   .sidebar-content { flex: 1; overflow-y: auto; padding: 16px; }
-  
-  /* FAQ Items & Forms */
   .section-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; letter-spacing: 1px; }
   .faq-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; position: relative; }
   .faq-q { font-size: 12px; color: var(--accent); font-weight: 500; margin-bottom: 4px; padding-right: 40px; }
   .faq-a { font-size: 11px; color: var(--text-muted); }
   .faq-actions { position: absolute; top: 8px; right: 8px; }
-  .faq-btn { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); cursor: pointer; font-size: 10px; padding: 2px 4px; }
+  .faq-btn { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); cursor: pointer; font-size: 10px; padding: 2px 6px; }
   .faq-form { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
   .faq-form label { font-size: 11px; color: var(--text-muted); display: block; margin-top: 8px; }
+  .char-count { font-size: 10px; color: var(--text-muted); float: right; }
   .faq-form input, .faq-form textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; color: var(--text); font-size: 12px; margin-top: 4px; outline: none; resize: none; }
+  .faq-form input:focus, .faq-form textarea:focus { border-color: var(--accent); }
   .btn { width: 100%; padding: 10px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; margin-top: 10px; border: none; transition: 0.2s; }
   .btn.primary { background: var(--accent); color: #000; }
-  .save-html-btn { width: 100%; padding: 8px; background: none; border: 1px solid var(--accent); border-radius: 6px; color: var(--accent); font-size: 11px; cursor: pointer; margin-top: 8px; }
+  .btn.primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 12px; z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .toast.error { border-color: var(--accent2); color: var(--accent2); }
+  .toast.success { border-color: var(--accent); color: var(--accent); }
 
-  /* Main Chat Area */
   .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
   .chat-header { padding: 14px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; background: var(--surface); }
   .chat-messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth; }
@@ -47,20 +53,17 @@
   .avatar { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
   .avatar.ai { background: rgba(0,212,170,0.1); color: var(--accent); border: 1px solid var(--accent); }
   .avatar.user { background: rgba(255,107,107,0.1); color: var(--accent2); border: 1px solid var(--accent2); }
-  .bubble { padding: 12px 16px; border-radius: 14px; font-size: 14px; line-height: 1.6; max-width: 75%; position: relative; }
+  .bubble { padding: 12px 16px; border-radius: 14px; font-size: 14px; line-height: 1.6; max-width: 75%; }
   .bubble.ai { background: var(--ai-bubble); border-top-left-radius: 2px; }
   .bubble.user { background: var(--user-bubble); border-top-right-radius: 2px; }
   .bubble.escalate { background: var(--escalate); border: 1px solid var(--accent2); }
   .confidence-bar { height: 3px; background: rgba(255,255,255,0.1); margin-top: 10px; border-radius: 2px; overflow: hidden; }
   .confidence-fill { height: 100%; transition: width 0.8s ease; }
-
-  /* Input Area */
   .chat-input-area { padding: 16px 24px; border-top: 1px solid var(--border); background: var(--surface); }
   .input-wrap { display: flex; align-items: flex-end; gap: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 16px; padding: 10px 14px; }
   #userInput { flex: 1; background: none; border: none; color: var(--text); outline: none; resize: none; font-size: 14px; max-height: 150px; padding: 4px 0; }
-  .send-btn { background: var(--accent); border: none; border-radius: 10px; width: 36px; height: 36px; cursor: pointer; font-weight: 700; }
-  .send-btn:disabled { opacity: 0.3; }
-
+  .send-btn { background: var(--accent); border: none; border-radius: 10px; width: 36px; height: 36px; cursor: pointer; font-weight: 700; flex-shrink: 0; }
+  .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
   .typing-indicator { display: flex; gap: 4px; padding: 4px 0; }
@@ -68,35 +71,55 @@
   .dot:nth-child(2) { animation-delay: 0.2s; }
   .dot:nth-child(3) { animation-delay: 0.4s; }
   @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-8px); } }
+  .loading-text { color: var(--text-muted); font-size: 12px; padding: 8px 0; }
+  .history-bar { display: flex; justify-content: flex-end; padding: 4px 24px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .clear-btn { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); font-size: 10px; padding: 3px 8px; cursor: pointer; }
+  .clear-btn:hover { border-color: var(--accent2); color: var(--accent2); }
 </style>
 </head>
 <body>
 
 <div class="sidebar">
-  <div class="sidebar-header"><div class="logo">FAQ AI AGENT v2</div></div>
+  <div class="sidebar-header"><div class="logo">FAQ AI AGENT v3</div></div>
   <div class="sidebar-tabs">
     <button class="sidebar-tab active" id="btn-faq" onclick="switchTab('faq')">FAQ管理</button>
     <button class="sidebar-tab" id="btn-settings" onclick="switchTab('settings')">設定</button>
   </div>
   <div class="sidebar-content">
+    <!-- FAQ Tab -->
     <div id="tab-faq" class="tab-panel active">
       <div class="faq-form">
-        <label>質問</label><input type="text" id="newQ" placeholder="例：送料は？">
-        <label>回答</label><textarea id="newA" placeholder="例：全国一律500円です。" rows="3"></textarea>
-        <button class="btn primary" onclick="addFaq()">+ FAQを追加</button>
+        <label>
+          質問
+          <span class="char-count"><span id="qCount">0</span>/500</span>
+        </label>
+        <input type="text" id="newQ" placeholder="例：送料は？" maxlength="500" oninput="updateCount('newQ','qCount')">
+        <label>
+          回答
+          <span class="char-count"><span id="aCount">0</span>/2000</span>
+        </label>
+        <textarea id="newA" placeholder="例：全国一律500円です。" rows="3" maxlength="2000" oninput="updateCount('newA','aCount')"></textarea>
+        <button class="btn primary" id="addFaqBtn" onclick="addFaq()">+ FAQを追加</button>
       </div>
-      <button class="save-html-btn" onclick="saveAsHtml()">💾 HTMLとして保存して永続化</button>
-      <div class="section-label" style="margin-top:24px">ナレッジベース</div>
-      <div id="faqList"></div>
+      <div class="section-label" style="margin-top:16px">ナレッジベース <span id="faqCountLabel" style="color:var(--accent)"></span></div>
+      <div id="faqList"><div class="loading-text">読み込み中...</div></div>
     </div>
+
+    <!-- Settings Tab -->
     <div id="tab-settings" class="tab-panel">
       <div class="faq-form">
-        <label>Google AI Studio API Key</label>
-        <input type="password" id="inputApiKey" placeholder="AIzaSy...">
-        <button class="btn primary" onclick="saveApiKey()">適用</button>
-        <p style="font-size:10px; color:var(--text-muted); margin-top:16px;">
-          ※ キーはブラウザを閉じると消去されます。<br>
-          ※ AI Studioのモデル「Gemini 1.5 Flash」を使用します。
+        <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">
+          APIキーは <strong style="color:var(--accent)">Supabase Edge Function</strong> に保存されます。ブラウザには一切残りません。
+        </div>
+        <label>Supabase Project URL</label>
+        <input type="text" id="inputSupabaseUrl" placeholder="https://xxxx.supabase.co">
+        <label>Supabase Anon Key</label>
+        <input type="password" id="inputAnonKey" placeholder="eyJhbGci...">
+        <button class="btn primary" onclick="saveSettings()">接続して適用</button>
+        <p style="font-size:10px; color:var(--text-muted); margin-top:16px; line-height:1.6;">
+          ⚠️ Gemini APIキーは Supabase の<br>
+          <code style="color:var(--accent)">GEMINI_API_KEY</code> シークレットに設定してください。<br><br>
+          <code style="color:var(--accent3)">supabase secrets set GEMINI_API_KEY=AIzaSy...</code>
         </p>
       </div>
     </div>
@@ -105,226 +128,341 @@
 
 <div class="main">
   <div class="chat-header">
-    <div class="chat-title">Customer Support AI</div>
+    <div>Customer Support AI</div>
     <div style="margin-left:auto; font-size:10px; background:var(--surface2); padding:4px 8px; border-radius:4px;">
-        STATUS: <span id="statusLabel" style="color:var(--accent)">READY</span>
+      STATUS: <span id="statusLabel" style="color:var(--text-muted)">未接続</span>
     </div>
   </div>
+  <div class="history-bar">
+    <button class="clear-btn" onclick="clearHistory()">会話をリセット</button>
+  </div>
   <div class="chat-messages" id="chatMessages">
-    <div class="welcome" id="welcomeMsg" style="text-align:center; padding:60px 20px; color:var(--text-muted);">
+    <div id="welcomeMsg" style="text-align:center; padding:60px 20px; color:var(--text-muted);">
       <h3 style="color:var(--text); margin-bottom:8px;">AIサポートエージェント</h3>
-      <p style="font-size:13px;">設定タブからAPIキーを入力して開始してください。</p>
+      <p style="font-size:13px;">設定タブからSupabase情報を入力して開始してください。</p>
     </div>
   </div>
   <div class="chat-input-area">
     <div class="input-wrap">
-      <textarea id="userInput" placeholder="メッセージを入力..." rows="1" oninput="autoResize(this)" onkeydown="handleKeyDown(event)"></textarea>
-      <button class="send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
+      <textarea id="userInput" placeholder="メッセージを入力..." rows="1"
+        oninput="autoResize(this)"
+        onkeydown="handleKeyDown(event)"
+        aria-label="メッセージ入力欄"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()" aria-label="送信" title="送信">↑</button>
     </div>
   </div>
 </div>
 
+<div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
 <script>
-// --- GLOBAL DATA ---
-let _apiKey = "";
-var FAQ_DATA = [
-  { id: 1, q: "営業時間は？", a: "平日の9:00〜18:00（土日祝休み）です。" },
-  { id: 2, q: "返品は可能ですか？", a: "未使用品に限り、到着後7日以内なら可能です。" }
-];
-let faqs = [...FAQ_DATA];
+// ============================================================
+// 1. 設定・初期化
+// ============================================================
+let supabaseClient = null;
+let conversationHistory = []; // 会話履歴（XSS対策のためtextのみ保持）
+let isSending = false;
+let lastSentAt = 0;
+const RATE_LIMIT_MS = 1500; // 1.5秒の連打防止
 
-// --- CORE: CHAT LOGIC ---
+function getSettings() {
+  return {
+    url: localStorage.getItem("sb_url") || "",
+    key: localStorage.getItem("sb_anon_key") || "",
+  };
+}
 
+function initSupabase() {
+  const { url, key } = getSettings();
+  if (!url || !key) return false;
+  try {
+    supabaseClient = window.supabase.createClient(url, key);
+    document.getElementById("statusLabel").textContent = "ONLINE";
+    document.getElementById("statusLabel").style.color = "var(--accent)";
+    return true;
+  } catch (e) {
+    console.error("Supabase init failed:", e);
+    return false;
+  }
+}
+
+// ============================================================
+// 2. XSS対策ユーティリティ
+// ============================================================
+function escapeHtml(str) {
+  const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
+  return String(str).replace(/[&<>"']/g, (c) => map[c]);
+}
+
+// ============================================================
+// 3. FAQ CRUD（Supabase連携）
+// ============================================================
+async function loadFaqs() {
+  if (!supabaseClient) {
+    renderFaqList([]);
+    return;
+  }
+  const { data, error } = await supabaseClient
+    .from("faqs")
+    .select("*")
+    .order("created_at", { ascending: true });
+  if (error) { showToast("FAQ読み込みエラー: " + error.message, "error"); return; }
+  renderFaqList(data || []);
+}
+
+function renderFaqList(faqs) {
+  const container = document.getElementById("faqList");
+  document.getElementById("faqCountLabel").textContent = `(${faqs.length}件)`;
+  if (faqs.length === 0) {
+    container.innerHTML = `<div style="font-size:12px; color:var(--text-muted)">FAQがありません</div>`;
+    return;
+  }
+  // escapeHtml でXSSを防ぐ
+  container.innerHTML = faqs.map((f) => `
+    <div class="faq-item">
+      <div class="faq-q">${escapeHtml(f.question)}</div>
+      <div class="faq-a">${escapeHtml(f.answer)}</div>
+      <div class="faq-actions">
+        <button class="faq-btn" onclick="deleteFaq(${Number(f.id)})" aria-label="削除">削除</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function addFaq() {
+  const q = document.getElementById("newQ").value.trim();
+  const a = document.getElementById("newA").value.trim();
+  if (!q || !a) { showToast("質問と回答を入力してください", "error"); return; }
+  if (q.length > 500 || a.length > 2000) { showToast("文字数制限を超えています", "error"); return; }
+  if (!supabaseClient) { showToast("先に設定からSupabaseに接続してください", "error"); return; }
+
+  const btn = document.getElementById("addFaqBtn");
+  btn.disabled = true;
+  const { error } = await supabaseClient.from("faqs").insert({ question: q, answer: a });
+  btn.disabled = false;
+  if (error) { showToast("追加エラー: " + error.message, "error"); return; }
+  document.getElementById("newQ").value = "";
+  document.getElementById("newA").value = "";
+  document.getElementById("qCount").textContent = "0";
+  document.getElementById("aCount").textContent = "0";
+  showToast("FAQを追加しました", "success");
+  loadFaqs();
+}
+
+async function deleteFaq(id) {
+  if (!supabaseClient) return;
+  if (!confirm("このFAQを削除しますか？")) return;
+  const { error } = await supabaseClient.from("faqs").delete().eq("id", id);
+  if (error) { showToast("削除エラー: " + error.message, "error"); return; }
+  showToast("削除しました", "success");
+  loadFaqs();
+}
+
+// ============================================================
+// 4. チャット送信（会話履歴付き・レート制限付き）
+// ============================================================
 async function sendMessage() {
-  const input = document.getElementById('userInput');
+  const input = document.getElementById("userInput");
   const text = input.value.trim();
-  const sendBtn = document.getElementById('sendBtn');
-  const cleanKey = _apiKey.trim(); // 空白を完全に除去
 
-  if (!text || sendBtn.disabled) return;
-  if (!cleanKey) { alert("APIキーを設定してください。"); switchTab('settings'); return; }
+  // バリデーション
+  if (!text || isSending) return;
+  if (text.length > 1000) { showToast("メッセージは1000文字以内で入力してください", "error"); return; }
 
-  if(document.getElementById('welcomeMsg')) document.getElementById('welcomeMsg').remove();
-  input.value = '';
-  input.style.height = 'auto';
-  sendBtn.disabled = true;
-  
-  appendMessage('user', text);
+  // レート制限（連打防止）
+  const now = Date.now();
+  if (now - lastSentAt < RATE_LIMIT_MS) {
+    showToast("少し待ってから送信してください", "error");
+    return;
+  }
+  lastSentAt = now;
+
+  if (!supabaseClient) { showToast("先に設定からSupabaseに接続してください", "error"); switchTab("settings"); return; }
+
+  // FAQ取得
+  const { data: faqs } = await supabaseClient.from("faqs").select("question, answer");
+  const faqContext = (faqs || []).map((f) => `Q: ${f.question}\nA: ${f.answer}`).join("\n\n");
+
+  // UI更新
+  if (document.getElementById("welcomeMsg")) document.getElementById("welcomeMsg").remove();
+  input.value = "";
+  input.style.height = "auto";
+  isSending = true;
+  document.getElementById("sendBtn").disabled = true;
+
+  appendMessage("user", text);
   const typingId = showTyping();
   scrollToBottom();
 
   try {
-    const faqContext = faqs.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n');
-    
-    // 【AI Studio 最適化URL】
-    const modelId = "gemini-1.5-flash"; 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${cleanKey}`;
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: `あなたは優秀なカスタマーサポートです。以下のFAQリストの知識のみを使って回答してください。リストにない場合は正直に「分からない」旨を伝え、担当者へ繋ぐよう案内してください。
-
-【FAQリスト】
-${faqContext}
-
-【制約】
-回答の最後に必ず [META]{"confidence": 0-100, "escalate": true/false}[/META] という形式でメタデータを付与してください。
-
-質問: ${text}`
-          }]
-        }]
-      })
+    // 会話履歴をリクエストに含める
+    const res = await supabaseClient.functions.invoke("chat", {
+      body: {
+        question: text,
+        faqContext,
+        history: conversationHistory.slice(-10), // 直近10ターンのみ送信
+      },
     });
 
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error?.message || `HTTP ${response.status}`);
-    }
+    if (res.error) throw new Error(res.error.message);
 
-    const data = await response.json();
-    const rawText = data.candidates[0].content.parts[0].text;
-    
-    // Parse Meta Data
-    const metaRegex = /\[META\]\s*(\{.*?\})\s*\[\/META\]/s;
+    const rawText = res.data?.text ?? "";
+    if (!rawText) throw new Error("AIからの応答が空でした");
+
+    // メタデータのパース
+    const metaRegex = /\[META\]\s*(\{[\s\S]*?\})\s*\[\/META\]/;
     const match = rawText.match(metaRegex);
     let conf = 70, esc = false, cleanAnswer = rawText;
 
     if (match) {
-        try {
-            const meta = JSON.parse(match[1]);
-            conf = meta.confidence ?? 70;
-            esc = !!meta.escalate;
-            cleanAnswer = rawText.replace(match[0], '').trim();
-        } catch(e) { console.error("JSON Parse Error"); }
+      try {
+        const meta = JSON.parse(match[1]);
+        conf = typeof meta.confidence === "number" ? Math.min(100, Math.max(0, meta.confidence)) : 70;
+        esc = !!meta.escalate;
+        cleanAnswer = rawText.replace(match[0], "").trim();
+      } catch (_) { /* JSON parse失敗は無視 */ }
     }
-    cleanAnswer = cleanAnswer.replace(/```json[\s\S]*?```/g, '').trim();
+
+    // 会話履歴に追加（テキストのみ保持）
+    conversationHistory.push({ role: "user", text });
+    conversationHistory.push({ role: "model", text: cleanAnswer });
 
     removeTyping(typingId);
-    appendMessage('ai', cleanAnswer, conf, esc);
+    appendMessage("ai", cleanAnswer, conf, esc);
 
   } catch (e) {
     removeTyping(typingId);
-    appendMessage('ai', `エラーが発生しました: ${e.message}\nAPIキーが正しいか、地域制限がかかっていないか確認してください。`);
-    console.error("DEBUG:", e);
+    appendMessage("ai", `エラーが発生しました: ${escapeHtml(e.message)}`);
   } finally {
-    sendBtn.disabled = false;
+    isSending = false;
+    document.getElementById("sendBtn").disabled = false;
     scrollToBottom();
   }
 }
 
-// --- UI HELPERS ---
+function clearHistory() {
+  if (!confirm("会話履歴をリセットしますか？")) return;
+  conversationHistory = [];
+  document.getElementById("chatMessages").innerHTML = "";
+  showToast("会話をリセットしました", "success");
+}
 
+// ============================================================
+// 5. UI ヘルパー
+// ============================================================
 function appendMessage(role, content, conf = null, esc = false) {
-  const chat = document.getElementById('chatMessages');
-  const wrap = document.createElement('div');
+  const chat = document.getElementById("chatMessages");
+  const wrap = document.createElement("div");
   wrap.className = `message-wrap ${role}`;
-  
-  let confHtml = '';
+
+  // テキストをtextContentで安全に挿入（XSS完全防止）
+  const bubble = document.createElement("div");
+  bubble.className = `bubble ${role}${esc ? " escalate" : ""}`;
+  bubble.textContent = content; // innerHTML は使わない
+
   if (conf !== null) {
-    const color = conf > 80 ? 'var(--accent)' : conf > 50 ? 'var(--accent3)' : 'var(--accent2)';
-    confHtml = `<div class="confidence-bar"><div class="confidence-fill" style="width:${conf}%; background:${color}"></div></div>`;
+    const bar = document.createElement("div");
+    bar.className = "confidence-bar";
+    const color = conf > 80 ? "var(--accent)" : conf > 50 ? "var(--accent3)" : "var(--accent2)";
+    bar.innerHTML = `<div class="confidence-fill" style="width:${conf}%; background:${color}"></div>`;
+    bubble.appendChild(bar);
   }
 
-  wrap.innerHTML = `
-    <div class="avatar ${role}">${role==='ai'?'AI':'客'}</div>
-    <div class="bubble ${role} ${esc?'escalate':''}">${content}${confHtml}</div>
-  `;
+  const avatar = document.createElement("div");
+  avatar.className = `avatar ${role}`;
+  avatar.setAttribute("aria-hidden", "true");
+  avatar.textContent = role === "ai" ? "AI" : "客";
+
+  wrap.appendChild(avatar);
+  wrap.appendChild(bubble);
   chat.appendChild(wrap);
 }
 
 function showTyping() {
   const id = "typing-" + Date.now();
-  const t = document.createElement('div');
+  const t = document.createElement("div");
   t.id = id;
   t.className = "message-wrap ai";
-  t.innerHTML = `<div class="avatar ai">AI</div><div class="bubble ai"><div class="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
-  document.getElementById('chatMessages').appendChild(t);
+  t.setAttribute("aria-label", "AIが入力中");
+  t.innerHTML = `<div class="avatar ai" aria-hidden="true">AI</div>
+    <div class="bubble ai"><div class="typing-indicator">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    </div></div>`;
+  document.getElementById("chatMessages").appendChild(t);
   return id;
 }
 
 function removeTyping(id) {
   const t = document.getElementById(id);
-  if(t) t.remove();
+  if (t) t.remove();
 }
 
 function scrollToBottom() {
-  const chat = document.getElementById('chatMessages');
+  const chat = document.getElementById("chatMessages");
   chat.scrollTop = chat.scrollHeight;
 }
 
 function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = (el.scrollHeight) + 'px';
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
 }
 
 function handleKeyDown(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
+  if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     sendMessage();
   }
 }
 
 function switchTab(tabId) {
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.sidebar-tab').forEach(b => b.classList.remove('active'));
-  document.getElementById(`tab-${tabId}`).classList.add('active');
-  document.getElementById(`btn-${tabId}`).classList.add('active');
+  document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+  document.querySelectorAll(".sidebar-tab").forEach((b) => b.classList.remove("active"));
+  document.getElementById(`tab-${tabId}`).classList.add("active");
+  document.getElementById(`btn-${tabId}`).classList.add("active");
 }
 
-function saveApiKey() {
-  const val = document.getElementById('inputApiKey').value.trim();
-  if (val) {
-    _apiKey = val;
-    alert("APIキーを適用しました。");
-    document.getElementById('inputApiKey').value = "";
-    switchTab('faq');
-    document.getElementById('statusLabel').innerText = "ONLINE";
+function updateCount(inputId, countId) {
+  document.getElementById(countId).textContent = document.getElementById(inputId).value.length;
+}
+
+function showToast(msg, type = "success") {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = `toast show ${type}`;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.className = "toast"; }, 3000);
+}
+
+// ============================================================
+// 6. 設定保存
+// ============================================================
+function saveSettings() {
+  const url = document.getElementById("inputSupabaseUrl").value.trim();
+  const key = document.getElementById("inputAnonKey").value.trim();
+  if (!url || !key) { showToast("URLとAnonキーを入力してください", "error"); return; }
+
+  localStorage.setItem("sb_url", url);
+  localStorage.setItem("sb_anon_key", key);
+  document.getElementById("inputSupabaseUrl").value = "";
+  document.getElementById("inputAnonKey").value = "";
+
+  if (initSupabase()) {
+    showToast("Supabaseに接続しました", "success");
+    loadFaqs();
+    switchTab("faq");
+  } else {
+    showToast("接続に失敗しました。URL/Keyを確認してください", "error");
   }
 }
 
-function addFaq() {
-  const q = document.getElementById('newQ').value.trim();
-  const a = document.getElementById('newA').value.trim();
-  if(!q || !a) return;
-  faqs.push({id: Date.now(), q, a});
-  document.getElementById('newQ').value = ''; 
-  document.getElementById('newA').value = '';
-  renderFaqList();
+// ============================================================
+// 7. 起動
+// ============================================================
+if (initSupabase()) {
+  loadFaqs();
+} else {
+  document.getElementById("faqList").innerHTML = `<div style="font-size:12px; color:var(--text-muted)">設定からSupabaseに接続してください</div>`;
 }
-
-function renderFaqList() {
-  const container = document.getElementById('faqList');
-  container.innerHTML = faqs.map(f => `
-    <div class="faq-item">
-      <div class="faq-q">${f.q}</div><div class="faq-a">${f.a}</div>
-      <div class="faq-actions"><button class="faq-btn" onclick="deleteFaq(${f.id})">削除</button></div>
-    </div>
-  `).join('');
-}
-
-function deleteFaq(id) {
-  faqs = faqs.filter(f => f.id !== id);
-  renderFaqList();
-}
-
-function saveAsHtml() {
-  let html = document.documentElement.outerHTML;
-  const faqJson = JSON.stringify(faqs);
-  // 現在のFAQデータをソースコードに埋め込んで保存
-  html = html.replace(/var FAQ_DATA = \[.*?\];/, `var FAQ_DATA = ${faqJson};`);
-  const blob = new Blob([html], {type: 'text/html'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); 
-  a.download = "faq-ai-agent-v2-final.html"; 
-  a.click();
-}
-
-// Initialize
-renderFaqList();
 </script>
 </body>
 </html>
