@@ -1,0 +1,47 @@
+name: Deploy Supabase Functions
+
+on:
+  push:
+    branches:
+      - main                    # mainにpushしたら自動デプロイ
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link Supabase project
+        run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy Edge Function
+        run: supabase functions deploy chat --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+```
+
+---
+
+### 3. GitHubにシークレットを登録
+
+GitHub リポジトリ → **Settings → Secrets and variables → Actions → New repository secret** で2つ登録：
+
+| シークレット名 | 値の取得場所 |
+|--------------|-------------|
+| `SUPABASE_ACCESS_TOKEN` | Supabase ダッシュボード → Account → **Access Tokens** → Generate new token |
+| `SUPABASE_PROJECT_REF` | Supabase ダッシュボード → Settings → General → **Reference ID** |
+
+---
+
+### 4. Gemini APIキーはSupabase側で登録
+
+GithubシークレットにGemini APIキーは**入れない**。  
+Supabaseダッシュボード → **Edge Functions → chat → Secrets** から直接登録できます：
+```
+GEMINI_API_KEY = AIzaSy...あなたのキー
