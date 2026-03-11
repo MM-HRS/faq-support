@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI FAQ Support (Optimized)</title>
+<title>AI FAQ Support (v1 Stable)</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -105,7 +105,7 @@
         <button class="btn primary" onclick="saveApiKey()">適用</button>
         <p style="font-size:10px; color:var(--text-muted); margin-top:16px; line-height:1.6;">
           ※ APIキーはブラウザのメモリ内に一時保存されます。<br>
-          ※ Supabase連携を使用する場合、RLS設定を確認してください。
+          ※ RLS設定を確認してください。
         </p>
       </div>
     </div>
@@ -116,14 +116,14 @@
   <div class="chat-header">
     <div class="chat-title">AI Support Agent</div>
     <div style="margin-left:auto; font-size:10px; display:flex; align-items:center; gap:8px;">
-        <span id="tokenBadge" style="background:var(--surface2); padding:2px 6px; border-radius:4px; color:var(--text-muted)">Flash 1.5</span>
+        <span id="tokenBadge" style="background:var(--surface2); padding:2px 6px; border-radius:4px; color:var(--text-muted)">Stable v1</span>
         <span style="color:var(--accent); font-weight:700;">ONLINE</span>
     </div>
   </div>
   <div class="chat-messages" id="chatMessages">
     <div class="welcome" id="welcomeMsg" style="text-align:center; padding:60px 20px; color:var(--text-muted);">
       <h2 style="color:var(--text); margin-bottom:12px;">CS Support AI</h2>
-      <p style="font-size:14px;">FAQを学習したAIが24時間対応します。<br>キーを設定して質問を開始してください。</p>
+      <p style="font-size:14px;">FAQを学習したAIが対応します。</p>
     </div>
   </div>
   <div class="chat-input-area">
@@ -140,7 +140,6 @@ const SUPABASE_URL = "https://qdmdorfyaozszjwtfber.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFkbWRvcmZ5YW96c3pqd3RmYmVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3ODE4NzgsImV4cCI6MjA4ODM1Nzg3OH0.-dSoLgoLb3RSq4bAh-1gb32Sj-wA6O4RjDW7njuUFJQ";
 let _apiKey = "";
 
-// Initial Data
 var FAQ_DATA = [
   { id: 1, q: "営業時間は？", a: "平日の9:00〜18:00（土日祝休み）です。" },
   { id: 2, q: "返品は可能ですか？", a: "未使用品に限り、到着後7日以内なら可能です。" }
@@ -161,7 +160,6 @@ async function sendMessage() {
     return; 
   }
 
-  // UI Reset
   if(document.getElementById('welcomeMsg')) document.getElementById('welcomeMsg').remove();
   input.value = '';
   input.style.height = 'auto';
@@ -174,7 +172,8 @@ async function sendMessage() {
   try {
     const faqContext = faqs.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n');
     
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${_apiKey}`, {
+    // 【修正箇所】 v1beta -> v1 に変更し、404エラーを解消
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${_apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -189,7 +188,7 @@ ${faqContext}
 【回答ルール】
 1. FAQにある内容は、親切かつ簡潔に答えてください。
 2. FAQに全く記載がない質問には「申し訳ございませんが、その点については詳細を確認し担当者より回答させていただきます」と答え、escalateをtrueにしてください。
-3. 回答の末尾に、必ず以下のJSONフォーマットを付与してください（このJSON自体は回答文には含めないでください）。
+3. 回答の末尾に、必ず以下のJSONフォーマットを付与してください。
 [META]{"confidence": 0-100, "escalate": true/false}[/META]
 
 質問: ${text}`
@@ -198,12 +197,11 @@ ${faqContext}
       })
     });
 
-    if (!response.ok) throw new Error("API請求に失敗しました。");
+    if (!response.ok) throw new Error("API請求に失敗しました。ステータス: " + response.status);
 
     const data = await response.json();
     const rawText = data.candidates[0].content.parts[0].text;
     
-    // --- ROBUST PARSING ---
     const metaRegex = /\[META\]\s*(\{.*?\})\s*\[\/META\]/s;
     const match = rawText.match(metaRegex);
     let conf = 70, esc = false, cleanAnswer = rawText;
@@ -216,7 +214,6 @@ ${faqContext}
             cleanAnswer = rawText.replace(match[0], '').trim();
         } catch(e) { console.warn("Meta parse error"); }
     }
-    // Fallback: strip any remaining markdown JSON blocks if AI ignored instructions
     cleanAnswer = cleanAnswer.replace(/```json[\s\S]*?```/g, '').trim();
 
     removeTyping(typingId);
@@ -227,7 +224,7 @@ ${faqContext}
 
   } catch (e) {
     removeTyping(typingId);
-    appendMessage('ai', "通信エラーが発生しました。設定メニューからAPIキーが有効か確認してください。");
+    appendMessage('ai', "通信エラーが発生しました。コンソール(F12)で詳細を確認してください。");
     console.error(e);
   } finally {
     sendBtn.disabled = false;
@@ -235,7 +232,7 @@ ${faqContext}
   }
 }
 
-// --- UTILS ---
+// --- UI UTILS ---
 
 function appendMessage(role, content, conf = null, esc = false) {
   const chat = document.getElementById('chatMessages');
@@ -362,11 +359,10 @@ function saveAsHtml() {
   const blob = new Blob([html], {type: 'text/html'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); 
-  a.download = "faq-ai-agent-v2.html"; 
+  a.download = "faq-ai-agent-v1-stable.html"; 
   a.click();
 }
 
-// Init
 renderFaqList();
 </script>
 </body>
