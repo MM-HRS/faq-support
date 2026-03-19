@@ -3,143 +3,261 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FAQ AI Agent - Secure</title>
+<title>FAQ AI Agent</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-
-<!-- Supabase JS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
   :root {
-    --bg: #0d1117; --surface: #161b22; --surface2: #21262d; --border: #30363d;
-    --accent: #00d4aa; --accent2: #ff6b6b; --accent3: #ffd93d; --text: #e6edf3;
-    --text-muted: #8b949e; --user-bubble: #1f4068; --ai-bubble: #1a2f23; --escalate: #3d1a1a;
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --accent: #00d4aa;
+    --accent2: #ff6b6b;
+    --accent3: #ffd93d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --user-bubble: #1f4068;
+    --ai-bubble: #1a2f23;
+    --escalate: #3d1a1a;
+    --sidebar-w: 320px;
+    --toggle-w: 40px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; overflow: hidden; }
 
-  .sidebar { width: 320px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
-  .sidebar-header { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  /* ---- Sidebar ---- */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: width 0.28s cubic-bezier(.4,0,.2,1), opacity 0.2s;
+    overflow: hidden;
+    position: relative;
+  }
+  .sidebar.collapsed {
+    width: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .sidebar-inner {
+    width: var(--sidebar-w);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    flex-shrink: 0;
+  }
+  .sidebar-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
   .logo { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--accent); letter-spacing: 2px; }
   .sidebar-tabs { display: flex; border-bottom: 1px solid var(--border); }
   .sidebar-tab { flex: 1; padding: 12px; text-align: center; font-size: 11px; cursor: pointer; color: var(--text-muted); border: none; background: none; border-bottom: 2px solid transparent; transition: 0.2s; }
   .sidebar-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
   .sidebar-content { flex: 1; overflow-y: auto; padding: 16px; }
   .section-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; letter-spacing: 1px; }
-  .faq-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; position: relative; }
-  .faq-q { font-size: 12px; color: var(--accent); font-weight: 500; margin-bottom: 4px; padding-right: 40px; }
-  .faq-a { font-size: 11px; color: var(--text-muted); }
-  .faq-actions { position: absolute; top: 8px; right: 8px; }
-  .faq-btn { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); cursor: pointer; font-size: 10px; padding: 2px 6px; }
+
+  /* FAQ Form */
   .faq-form { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
   .faq-form label { font-size: 11px; color: var(--text-muted); display: block; margin-top: 8px; }
   .char-count { font-size: 10px; color: var(--text-muted); float: right; }
-  .faq-form input, .faq-form textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; color: var(--text); font-size: 12px; margin-top: 4px; outline: none; resize: none; }
+  .faq-form input, .faq-form textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px; color: var(--text); font-size: 12px;
+    margin-top: 4px; outline: none; resize: none; font-family: inherit;
+    transition: border-color 0.2s;
+  }
   .faq-form input:focus, .faq-form textarea:focus { border-color: var(--accent); }
-  .btn { width: 100%; padding: 10px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; margin-top: 10px; border: none; transition: 0.2s; }
+  .btn { width: 100%; padding: 10px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; margin-top: 10px; border: none; transition: 0.2s; font-family: inherit; }
   .btn.primary { background: var(--accent); color: #000; }
+  .btn.primary:hover { filter: brightness(1.1); }
   .btn.primary:disabled { opacity: 0.4; cursor: not-allowed; }
-  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 12px; z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-  .toast.show { opacity: 1; }
+
+  /* FAQ List */
+  .faq-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; position: relative; transition: border-color 0.2s; }
+  .faq-item:hover { border-color: #484f58; }
+  .faq-q { font-size: 12px; color: var(--accent); font-weight: 500; margin-bottom: 4px; padding-right: 44px; }
+  .faq-a { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+  .faq-actions { position: absolute; top: 8px; right: 8px; }
+  .faq-btn { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); cursor: pointer; font-size: 10px; padding: 2px 6px; transition: 0.2s; }
+  .faq-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 12px; z-index: 999; opacity: 0; transition: opacity 0.3s, transform 0.3s; pointer-events: none; transform: translateY(8px); }
+  .toast.show { opacity: 1; transform: translateY(0); }
   .toast.error { border-color: var(--accent2); color: var(--accent2); }
   .toast.success { border-color: var(--accent); color: var(--accent); }
 
-  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-  .chat-header { padding: 14px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; background: var(--surface); }
+  /* ---- Toggle Button ---- */
+  .sidebar-toggle {
+    position: fixed;
+    top: 14px;
+    left: 12px;
+    z-index: 100;
+    width: 32px;
+    height: 32px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, border-color 0.2s, left 0.28s cubic-bezier(.4,0,.2,1);
+    color: var(--text-muted);
+  }
+  .sidebar-toggle:hover { background: var(--surface); border-color: var(--accent); color: var(--accent); }
+  .sidebar-toggle.open { left: calc(var(--sidebar-w) + 12px); }
+  .toggle-icon { font-size: 14px; transition: transform 0.28s; display: flex; align-items: center; justify-content: center; }
+
+  /* ---- Main ---- */
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; transition: margin-left 0.28s cubic-bezier(.4,0,.2,1); }
+  .chat-header {
+    padding: 14px 24px 14px 56px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    gap: 12px;
+  }
+  .chat-header-title { font-size: 14px; font-weight: 500; }
+  .status-badge { margin-left: auto; font-size: 10px; background: var(--surface2); padding: 4px 10px; border-radius: 4px; display: flex; align-items: center; gap: 6px; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; transition: background 0.3s; }
+  .status-dot.online { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+
+  .history-bar { display: flex; justify-content: flex-end; padding: 6px 24px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .clear-btn { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); font-size: 10px; padding: 3px 8px; cursor: pointer; transition: 0.2s; }
+  .clear-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* Chat */
   .chat-messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth; }
   .message-wrap { display: flex; gap: 12px; animation: fadeIn 0.3s ease; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   .message-wrap.user { flex-direction: row-reverse; }
   .avatar { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
-  .avatar.ai { background: rgba(0,212,170,0.1); color: var(--accent); border: 1px solid var(--accent); }
-  .avatar.user { background: rgba(255,107,107,0.1); color: var(--accent2); border: 1px solid var(--accent2); }
+  .avatar.ai { background: rgba(0,212,170,0.1); color: var(--accent); border: 1px solid rgba(0,212,170,0.3); }
+  .avatar.user { background: rgba(255,107,107,0.1); color: var(--accent2); border: 1px solid rgba(255,107,107,0.3); }
   .bubble { padding: 12px 16px; border-radius: 14px; font-size: 14px; line-height: 1.6; max-width: 75%; }
   .bubble.ai { background: var(--ai-bubble); border-top-left-radius: 2px; }
   .bubble.user { background: var(--user-bubble); border-top-right-radius: 2px; }
   .bubble.escalate { background: var(--escalate); border: 1px solid var(--accent2); }
-  .confidence-bar { height: 3px; background: rgba(255,255,255,0.1); margin-top: 10px; border-radius: 2px; overflow: hidden; }
-  .confidence-fill { height: 100%; transition: width 0.8s ease; }
+  .confidence-bar { height: 3px; background: rgba(255,255,255,0.08); margin-top: 10px; border-radius: 2px; overflow: hidden; }
+  .confidence-fill { height: 100%; transition: width 0.8s ease; border-radius: 2px; }
+
+  /* Welcome */
+  .welcome { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .welcome h3 { color: var(--text); margin-bottom: 8px; font-size: 18px; }
+  .welcome p { font-size: 13px; margin-bottom: 20px; }
+  .sample-questions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .sample-q { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: 12px; color: var(--text-muted); cursor: pointer; transition: 0.2s; }
+  .sample-q:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Input */
   .chat-input-area { padding: 16px 24px; border-top: 1px solid var(--border); background: var(--surface); }
-  .input-wrap { display: flex; align-items: flex-end; gap: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 16px; padding: 10px 14px; }
-  #userInput { flex: 1; background: none; border: none; color: var(--text); outline: none; resize: none; font-size: 14px; max-height: 150px; padding: 4px 0; }
-  .send-btn { background: var(--accent); border: none; border-radius: 10px; width: 36px; height: 36px; cursor: pointer; font-weight: 700; flex-shrink: 0; }
+  .input-wrap { display: flex; align-items: flex-end; gap: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 16px; padding: 10px 14px; transition: border-color 0.2s; }
+  .input-wrap:focus-within { border-color: rgba(0,212,170,0.4); }
+  #userInput { flex: 1; background: none; border: none; color: var(--text); outline: none; resize: none; font-size: 14px; max-height: 150px; padding: 4px 0; font-family: inherit; }
+  .send-btn { background: var(--accent); border: none; border-radius: 10px; width: 36px; height: 36px; cursor: pointer; font-weight: 700; flex-shrink: 0; color: #000; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+  .send-btn:hover { filter: brightness(1.1); }
   .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* Tabs */
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
+
+  /* Typing */
   .typing-indicator { display: flex; gap: 4px; padding: 4px 0; }
   .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: bounce 1.4s infinite; }
   .dot:nth-child(2) { animation-delay: 0.2s; }
   .dot:nth-child(3) { animation-delay: 0.4s; }
   @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-8px); } }
   .loading-text { color: var(--text-muted); font-size: 12px; padding: 8px 0; }
-  .history-bar { display: flex; justify-content: flex-end; padding: 4px 24px; background: var(--surface); border-bottom: 1px solid var(--border); }
-  .clear-btn { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); font-size: 10px; padding: 3px 8px; cursor: pointer; }
-  .clear-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* Settings */
+  .settings-note { font-size: 11px; color: var(--text-muted); line-height: 1.6; margin-bottom: 8px; }
+  .settings-note strong { color: var(--accent); }
+  .code-tag { color: var(--accent); font-family: 'Space Mono', monospace; font-size: 10px; background: rgba(0,212,170,0.08); padding: 1px 5px; border-radius: 4px; }
+  .code-tag-yellow { color: var(--accent3); font-family: 'Space Mono', monospace; font-size: 10px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 </style>
 </head>
 <body>
 
-<div class="sidebar">
-  <div class="sidebar-header"><div class="logo">FAQ AI AGENT v3</div></div>
-  <div class="sidebar-tabs">
-    <button class="sidebar-tab active" id="btn-faq" onclick="switchTab('faq')">FAQ管理</button>
-    <button class="sidebar-tab" id="btn-settings" onclick="switchTab('settings')">設定</button>
-  </div>
-  <div class="sidebar-content">
-    <!-- FAQ Tab -->
-    <div id="tab-faq" class="tab-panel active">
-      <div class="faq-form">
-        <label>
-          質問
-          <span class="char-count"><span id="qCount">0</span>/500</span>
-        </label>
-        <input type="text" id="newQ" placeholder="例：送料は？" maxlength="500" oninput="updateCount('newQ','qCount')">
-        <label>
-          回答
-          <span class="char-count"><span id="aCount">0</span>/2000</span>
-        </label>
-        <textarea id="newA" placeholder="例：全国一律500円です。" rows="3" maxlength="2000" oninput="updateCount('newA','aCount')"></textarea>
-        <button class="btn primary" id="addFaqBtn" onclick="addFaq()">+ FAQを追加</button>
-      </div>
-      <div class="section-label" style="margin-top:16px">ナレッジベース <span id="faqCountLabel" style="color:var(--accent)"></span></div>
-      <div id="faqList"><div class="loading-text">読み込み中...</div></div>
-    </div>
+<!-- Sidebar Toggle Button -->
+<button class="sidebar-toggle open" id="sidebarToggle" onclick="toggleSidebar()" title="サイドバーを開閉">
+  <span class="toggle-icon" id="toggleIcon">☰</span>
+</button>
 
-    <!-- Settings Tab -->
-    <div id="tab-settings" class="tab-panel">
-      <div class="faq-form">
-        <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">
-          APIキーは <strong style="color:var(--accent)">Supabase Edge Function</strong> に保存されます。ブラウザには一切残りません。
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-inner">
+    <div class="sidebar-header">
+      <div class="logo">FAQ AI AGENT v3</div>
+    </div>
+    <div class="sidebar-tabs">
+      <button class="sidebar-tab active" id="btn-faq" onclick="switchTab('faq')">FAQ管理</button>
+      <button class="sidebar-tab" id="btn-settings" onclick="switchTab('settings')">設定</button>
+    </div>
+    <div class="sidebar-content">
+
+      <!-- FAQ Tab -->
+      <div id="tab-faq" class="tab-panel active">
+        <div class="faq-form">
+          <label>質問 <span class="char-count"><span id="qCount">0</span>/500</span></label>
+          <input type="text" id="newQ" placeholder="例：送料は？" maxlength="500" oninput="updateCount('newQ','qCount')">
+          <label>回答 <span class="char-count"><span id="aCount">0</span>/2000</span></label>
+          <textarea id="newA" placeholder="例：全国一律500円です。" rows="3" maxlength="2000" oninput="updateCount('newA','aCount')"></textarea>
+          <button class="btn primary" id="addFaqBtn" onclick="addFaq()">+ FAQを追加</button>
         </div>
-        <label>Supabase Project URL</label>
-        <input type="text" id="inputSupabaseUrl" placeholder="https://xxxx.supabase.co">
-        <label>Supabase Anon Key</label>
-        <input type="password" id="inputAnonKey" placeholder="eyJhbGci...">
-        <button class="btn primary" onclick="saveSettings()">接続して適用</button>
-        <p style="font-size:10px; color:var(--text-muted); margin-top:16px; line-height:1.6;">
-          ⚠️ Gemini APIキーは Supabase の<br>
-          <code style="color:var(--accent)">GEMINI_API_KEY</code> シークレットに設定してください。<br><br>
-          <code style="color:var(--accent3)">supabase secrets set GEMINI_API_KEY=AIzaSy...</code>
-        </p>
+        <div class="section-label" style="margin-top:16px">ナレッジベース <span id="faqCountLabel" style="color:var(--accent)"></span></div>
+        <div id="faqList"><div class="loading-text">読み込み中...</div></div>
       </div>
+
+      <!-- Settings Tab -->
+      <div id="tab-settings" class="tab-panel">
+        <div class="faq-form">
+          <div class="settings-note">
+            APIキーは <strong>Supabase Edge Function</strong> に保存されます。ブラウザには一切残りません。
+          </div>
+          <label>Supabase Project URL</label>
+          <input type="text" id="inputSupabaseUrl" placeholder="https://xxxx.supabase.co">
+          <label>Supabase Anon Key</label>
+          <input type="password" id="inputAnonKey" placeholder="eyJhbGci...">
+          <button class="btn primary" onclick="saveSettings()">接続して適用</button>
+          <p style="font-size:10px; color:var(--text-muted); margin-top:16px; line-height:1.8;">
+            ⚠️ Gemini APIキーは Supabase の<br>
+            <span class="code-tag">GEMINI_API_KEY</span> シークレットに設定してください。<br><br>
+            <span class="code-tag-yellow">supabase secrets set GEMINI_API_KEY=AIzaSy...</span>
+          </p>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
 
-<div class="main">
+<!-- Main -->
+<div class="main" id="main">
   <div class="chat-header">
-    <div>Customer Support AI</div>
-    <div style="margin-left:auto; font-size:10px; background:var(--surface2); padding:4px 8px; border-radius:4px;">
-      STATUS: <span id="statusLabel" style="color:var(--text-muted)">未接続</span>
+    <div class="chat-header-title">Customer Support AI</div>
+    <div class="status-badge">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusLabel" style="color:var(--text-muted)">未接続</span>
     </div>
   </div>
   <div class="history-bar">
     <button class="clear-btn" onclick="clearHistory()">会話をリセット</button>
   </div>
   <div class="chat-messages" id="chatMessages">
-    <div id="welcomeMsg" style="text-align:center; padding:60px 20px; color:var(--text-muted);">
-      <h3 style="color:var(--text); margin-bottom:8px;">AIサポートエージェント</h3>
-      <p style="font-size:13px;">設定タブからSupabase情報を入力して開始してください。</p>
+    <div id="welcomeMsg" class="welcome">
+      <h3>AIサポートエージェント</h3>
+      <p>設定タブからSupabase情報を入力して開始してください。</p>
+      <div class="sample-questions" id="sampleQuestions"></div>
     </div>
   </div>
   <div class="chat-input-area">
@@ -157,13 +275,35 @@
 
 <script>
 // ============================================================
-// 1. 設定・初期化
+// 1. サイドバー開閉
+// ============================================================
+let sidebarOpen = true;
+
+function toggleSidebar() {
+  sidebarOpen = !sidebarOpen;
+  const sidebar = document.getElementById('sidebar');
+  const toggle = document.getElementById('sidebarToggle');
+  const icon = document.getElementById('toggleIcon');
+
+  if (sidebarOpen) {
+    sidebar.classList.remove('collapsed');
+    toggle.classList.add('open');
+    icon.textContent = '☰';
+  } else {
+    sidebar.classList.add('collapsed');
+    toggle.classList.remove('open');
+    icon.textContent = '☰';
+  }
+}
+
+// ============================================================
+// 2. 設定・初期化
 // ============================================================
 let supabaseClient = null;
-let conversationHistory = []; // 会話履歴（XSS対策のためtextのみ保持）
+let conversationHistory = [];
 let isSending = false;
 let lastSentAt = 0;
-const RATE_LIMIT_MS = 1500; // 1.5秒の連打防止
+const RATE_LIMIT_MS = 1500;
 
 function getSettings() {
   return {
@@ -179,6 +319,7 @@ function initSupabase() {
     supabaseClient = window.supabase.createClient(url, key);
     document.getElementById("statusLabel").textContent = "ONLINE";
     document.getElementById("statusLabel").style.color = "var(--accent)";
+    document.getElementById("statusDot").classList.add("online");
     return true;
   } catch (e) {
     console.error("Supabase init failed:", e);
@@ -187,7 +328,7 @@ function initSupabase() {
 }
 
 // ============================================================
-// 2. XSS対策ユーティリティ
+// 3. XSS対策
 // ============================================================
 function escapeHtml(str) {
   const map = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
@@ -195,19 +336,15 @@ function escapeHtml(str) {
 }
 
 // ============================================================
-// 3. FAQ CRUD（Supabase連携）
+// 4. FAQ CRUD
 // ============================================================
 async function loadFaqs() {
-  if (!supabaseClient) {
-    renderFaqList([]);
-    return;
-  }
+  if (!supabaseClient) { renderFaqList([]); return; }
   const { data, error } = await supabaseClient
-    .from("faqs")
-    .select("*")
-    .order("created_at", { ascending: true });
+    .from("faqs").select("*").order("created_at", { ascending: true });
   if (error) { showToast("FAQ読み込みエラー: " + error.message, "error"); return; }
   renderFaqList(data || []);
+  renderSampleQuestions(data || []);
 }
 
 function renderFaqList(faqs) {
@@ -217,7 +354,6 @@ function renderFaqList(faqs) {
     container.innerHTML = `<div style="font-size:12px; color:var(--text-muted)">FAQがありません</div>`;
     return;
   }
-  // escapeHtml でXSSを防ぐ
   container.innerHTML = faqs.map((f) => `
     <div class="faq-item">
       <div class="faq-q">${escapeHtml(f.question)}</div>
@@ -229,6 +365,20 @@ function renderFaqList(faqs) {
   `).join("");
 }
 
+function renderSampleQuestions(faqs) {
+  const container = document.getElementById("sampleQuestions");
+  if (!container || faqs.length === 0) return;
+  const samples = faqs.slice(0, 4);
+  container.innerHTML = samples.map(f =>
+    `<button class="sample-q" onclick="useSampleQ(${JSON.stringify(escapeHtml(f.question))})">${escapeHtml(f.question)}</button>`
+  ).join("");
+}
+
+function useSampleQ(q) {
+  document.getElementById("userInput").value = q;
+  sendMessage();
+}
+
 async function addFaq() {
   const q = document.getElementById("newQ").value.trim();
   const a = document.getElementById("newA").value.trim();
@@ -238,9 +388,12 @@ async function addFaq() {
 
   const btn = document.getElementById("addFaqBtn");
   btn.disabled = true;
+  btn.textContent = "追加中...";
   const { error } = await supabaseClient.from("faqs").insert({ question: q, answer: a });
   btn.disabled = false;
+  btn.textContent = "+ FAQを追加";
   if (error) { showToast("追加エラー: " + error.message, "error"); return; }
+
   document.getElementById("newQ").value = "";
   document.getElementById("newA").value = "";
   document.getElementById("qCount").textContent = "0";
@@ -259,32 +412,24 @@ async function deleteFaq(id) {
 }
 
 // ============================================================
-// 4. チャット送信（会話履歴付き・レート制限付き）
+// 5. チャット
 // ============================================================
 async function sendMessage() {
   const input = document.getElementById("userInput");
   const text = input.value.trim();
-
-  // バリデーション
   if (!text || isSending) return;
   if (text.length > 1000) { showToast("メッセージは1000文字以内で入力してください", "error"); return; }
 
-  // レート制限（連打防止）
   const now = Date.now();
-  if (now - lastSentAt < RATE_LIMIT_MS) {
-    showToast("少し待ってから送信してください", "error");
-    return;
-  }
+  if (now - lastSentAt < RATE_LIMIT_MS) { showToast("少し待ってから送信してください", "error"); return; }
   lastSentAt = now;
-
   if (!supabaseClient) { showToast("先に設定からSupabaseに接続してください", "error"); switchTab("settings"); return; }
 
-  // FAQ取得
   const { data: faqs } = await supabaseClient.from("faqs").select("question, answer");
   const faqContext = (faqs || []).map((f) => `Q: ${f.question}\nA: ${f.answer}`).join("\n\n");
 
-  // UI更新
-  if (document.getElementById("welcomeMsg")) document.getElementById("welcomeMsg").remove();
+  const welcomeMsg = document.getElementById("welcomeMsg");
+  if (welcomeMsg) welcomeMsg.remove();
   input.value = "";
   input.style.height = "auto";
   isSending = true;
@@ -295,21 +440,18 @@ async function sendMessage() {
   scrollToBottom();
 
   try {
-    // 会話履歴をリクエストに含める
     const res = await supabaseClient.functions.invoke("chat", {
       body: {
         question: text,
         faqContext,
-        history: conversationHistory.slice(-10), // 直近10ターンのみ送信
+        history: conversationHistory.slice(-10),
       },
     });
 
     if (res.error) throw new Error(res.error.message);
-
     const rawText = res.data?.text ?? "";
     if (!rawText) throw new Error("AIからの応答が空でした");
 
-    // メタデータのパース
     const metaRegex = /\[META\]\s*(\{[\s\S]*?\})\s*\[\/META\]/;
     const match = rawText.match(metaRegex);
     let conf = 70, esc = false, cleanAnswer = rawText;
@@ -320,10 +462,9 @@ async function sendMessage() {
         conf = typeof meta.confidence === "number" ? Math.min(100, Math.max(0, meta.confidence)) : 70;
         esc = !!meta.escalate;
         cleanAnswer = rawText.replace(match[0], "").trim();
-      } catch (_) { /* JSON parse失敗は無視 */ }
+      } catch (_) {}
     }
 
-    // 会話履歴に追加（テキストのみ保持）
     conversationHistory.push({ role: "user", text });
     conversationHistory.push({ role: "model", text: cleanAnswer });
 
@@ -332,7 +473,7 @@ async function sendMessage() {
 
   } catch (e) {
     removeTyping(typingId);
-    appendMessage("ai", `エラーが発生しました: ${escapeHtml(e.message)}`);
+    appendMessage("ai", `エラーが発生しました: ${e.message}`);
   } finally {
     isSending = false;
     document.getElementById("sendBtn").disabled = false;
@@ -343,22 +484,33 @@ async function sendMessage() {
 function clearHistory() {
   if (!confirm("会話履歴をリセットしますか？")) return;
   conversationHistory = [];
-  document.getElementById("chatMessages").innerHTML = "";
+  const chat = document.getElementById("chatMessages");
+  chat.innerHTML = "";
+  // ウェルカム画面を再表示
+  const welcome = document.createElement("div");
+  welcome.id = "welcomeMsg";
+  welcome.className = "welcome";
+  welcome.innerHTML = `
+    <h3>AIサポートエージェント</h3>
+    <p>質問を入力してください。</p>
+    <div class="sample-questions" id="sampleQuestions"></div>
+  `;
+  chat.appendChild(welcome);
+  if (supabaseClient) loadFaqs();
   showToast("会話をリセットしました", "success");
 }
 
 // ============================================================
-// 5. UI ヘルパー
+// 6. UI ヘルパー
 // ============================================================
 function appendMessage(role, content, conf = null, esc = false) {
   const chat = document.getElementById("chatMessages");
   const wrap = document.createElement("div");
   wrap.className = `message-wrap ${role}`;
 
-  // テキストをtextContentで安全に挿入（XSS完全防止）
   const bubble = document.createElement("div");
   bubble.className = `bubble ${role}${esc ? " escalate" : ""}`;
-  bubble.textContent = content; // innerHTML は使わない
+  bubble.textContent = content;
 
   if (conf !== null) {
     const bar = document.createElement("div");
@@ -366,6 +518,13 @@ function appendMessage(role, content, conf = null, esc = false) {
     const color = conf > 80 ? "var(--accent)" : conf > 50 ? "var(--accent3)" : "var(--accent2)";
     bar.innerHTML = `<div class="confidence-fill" style="width:${conf}%; background:${color}"></div>`;
     bubble.appendChild(bar);
+  }
+
+  if (esc) {
+    const escNote = document.createElement("div");
+    escNote.style.cssText = "font-size:11px; color:var(--accent2); margin-top:8px;";
+    escNote.textContent = "⚠️ このご質問はオペレーターへの引き継ぎをお勧めします";
+    bubble.appendChild(escNote);
   }
 
   const avatar = document.createElement("div");
@@ -434,7 +593,7 @@ function showToast(msg, type = "success") {
 }
 
 // ============================================================
-// 6. 設定保存
+// 7. 設定保存
 // ============================================================
 function saveSettings() {
   const url = document.getElementById("inputSupabaseUrl").value.trim();
@@ -456,7 +615,7 @@ function saveSettings() {
 }
 
 // ============================================================
-// 7. 起動
+// 8. 起動
 // ============================================================
 if (initSupabase()) {
   loadFaqs();
